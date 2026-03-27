@@ -237,7 +237,7 @@ class IndexQuerySet:
         self.__attributes_to_search_on.append(*attributes)
         return self
 
-    def search(self, q: str = ""):
+    def search(self, q: str = "", queryset=None):
         """Searches the index for the given query.
 
         This method searches the index for the given query and returns the results as an actual Django QuerySet.
@@ -261,7 +261,14 @@ class IndexQuerySet:
         )
         id_field = getattr(self.model.MeiliMeta, "primary_key", "id")
         pk_list = [hit[id_field] for hit in results.get("hits", [])]
+
+        base_qs = queryset if queryset is not None else self.model.objects
+
+        if not pk_list:
+            return base_qs.none()
+
         preserved_order = Case(
             *[When(pk=pk, then=pos) for pos, pk in enumerate(pk_list)]
         )
-        return self.model.objects.filter(pk__in=pk_list).order_by(preserved_order)
+
+        return base_qs.filter(pk__in=pk_list).order_by(preserved_order)
