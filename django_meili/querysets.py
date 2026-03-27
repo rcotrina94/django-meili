@@ -237,7 +237,7 @@ class IndexQuerySet:
         self.__attributes_to_search_on.append(*attributes)
         return self
 
-    def search(self, q: str = "", queryset=None):
+    def search(self, q: str = "", queryset=None, search_opts: dict | None = None):
         """Searches the index for the given query.
 
         This method searches the index for the given query and returns the results as an actual Django QuerySet.
@@ -248,17 +248,22 @@ class IndexQuerySet:
         ```
         """
 
-        results = self.index.search(
-            q,
-            {
-                "offset": self.__offset,
-                "limit": self.__limit,
-                "filter": self.__filters,
-                "sort": self.__sort,
-                "matchingStrategy": self.__matching_strategy,
-                "attributesToSearchOn": self.__attributes_to_search_on,
-            },
-        )
+        default_opts = {
+            "offset": self.__offset,
+            "limit": self.__limit,
+            "filter": self.__filters,
+            "sort": self.__sort,
+            "matchingStrategy": self.__matching_strategy,
+            "attributesToSearchOn": self.__attributes_to_search_on,
+        }
+
+        merged_opts = {
+            **{k: v for k, v in default_opts.items() if v is not None},
+            **(search_opts or {}),
+        }
+
+        results = self.index.search(q, merged_opts)
+
         id_field = getattr(self.model.MeiliMeta, "primary_key", "id")
         pk_list = [hit[id_field] for hit in results.get("hits", [])]
 
