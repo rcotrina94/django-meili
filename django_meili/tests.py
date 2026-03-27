@@ -345,6 +345,38 @@ class DjangoMeiliIndexSettingsTestCase(TestCase):
 
 
 @override_settings(MEILISEARCH={"SYNC": True}, DEBUG=True)
+class MeiliSearchWithMetaTestCase(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.model = PostAdditionalIndexSettings
+
+        cls.obj1 = cls.model.objects.create(title="Hello world", body="foo")
+        cls.obj2 = cls.model.objects.create(title="Hello django", body="bar")
+        cls.obj3 = cls.model.objects.create(title="Another post", body="baz")
+
+    @classmethod
+    def tearDownClass(cls):
+        from django_meili._client import client
+
+        client.client.delete_index(cls.model._meilisearch["index_name"])
+        super().tearDownClass()
+
+    def test_search_with_meta_returns_queryset_and_metadata(self):
+        qs, meta = self.model.meilisearch.search_with_meta("hello")
+
+        self.assertTrue(hasattr(qs, "filter"))
+
+        self.assertIsInstance(meta, dict)
+        self.assertIn("hits", meta)
+
+    def test_search_with_meta_returns_total_hits(self):
+        qs, meta = self.model.meilisearch.search_with_meta("hello")
+
+        self.assertIn("estimatedTotalHits", meta)
+        self.assertGreaterEqual(meta["estimatedTotalHits"], qs.count())
+
+
+@override_settings(MEILISEARCH={"SYNC": True}, DEBUG=True)
 class DjangoMeiliSyncindexCommandTestCase(TestCase):
     @classmethod
     def setUpTestData(cls) -> None:

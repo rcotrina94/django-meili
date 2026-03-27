@@ -237,17 +237,7 @@ class IndexQuerySet:
         self.__attributes_to_search_on.append(*attributes)
         return self
 
-    def search(self, q: str = "", queryset=None, search_opts: dict | None = None):
-        """Searches the index for the given query.
-
-        This method searches the index for the given query and returns the results as an actual Django QuerySet.
-
-        For example:
-        ```python
-        Model.meilisearch.search("Hello World") # Returns a Django QuerySet
-        ```
-        """
-
+    def _raw_search(self, q: str = "", search_opts: dict | None = None):
         default_opts = {
             "offset": self.__offset,
             "limit": self.__limit,
@@ -262,10 +252,11 @@ class IndexQuerySet:
             **(search_opts or {}),
         }
 
-        results = self.index.search(q, merged_opts)
+        return self.index.search(q, merged_opts)
 
+    def _hits_to_queryset(self, hits, queryset=None):
         id_field = getattr(self.model.MeiliMeta, "primary_key", "id")
-        pk_list = [hit[id_field] for hit in results.get("hits", [])]
+        pk_list = [hit[id_field] for hit in hits]
 
         base_qs = queryset if queryset is not None else self.model.objects
 
@@ -277,3 +268,24 @@ class IndexQuerySet:
         )
 
         return base_qs.filter(pk__in=pk_list).order_by(preserved_order)
+
+    def search(self, q: str = "", queryset=None, search_opts: dict | None = None):
+        """Searches the index for the given query.
+
+        This method searches the index for the given query and returns the results as an actual Django QuerySet.
+
+        For example:
+        ```python
+        Model.meilisearch.search("Hello World") # Returns a Django QuerySet
+        ```
+        """
+
+        results = self._raw_search(q, search_opts)
+        return self._hits_to_queryset(results.get("hits", []), queryset)
+
+    def search_with_meta(
+        self, q: str = "", queryset=None, search_opts: dict | None = None
+    ):
+        results = self._raw_search(q, search_opts)
+        qs = self._hits_to_queryset(results.get("hits", []), queryset)
+        return qs, results
