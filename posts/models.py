@@ -25,6 +25,11 @@ class PostNoGeo(IndexMixin, models.Model):
         filterable_fields = ("title",)
         searchable_fields = ("id", "title", "body")
         displayed_fields = ("id", "title", "body")
+        index_settings = {
+            "pagination": {
+                "maxTotalHits": 50,
+            }
+        }
         index_name = "posts_not_geo"
 
     def __str__(self):
@@ -100,6 +105,7 @@ class UuidIdPost(IndexMixin, models.Model):
     def __str__(self):
         return self.title
 
+
 class IndexNamePost(IndexMixin, models.Model):
     """Model definition for Post."""
 
@@ -120,3 +126,33 @@ class IndexNamePost(IndexMixin, models.Model):
 
     def __str__(self):
         return self.title
+
+
+class PostAdditionalIndexSettings(IndexMixin, models.Model):
+    title = models.CharField(max_length=255)
+    body = models.TextField()
+    genre = models.CharField(max_length=50)
+
+    class MeiliMeta:
+        searchable_fields = ("title", "body")
+        filterable_fields = ("genre",)
+        displayed_fields = ("title", "body", "genre")
+
+        index_settings = {
+            "stopWords": ["the", "a"],
+            "rankingRules": [
+                "words",
+                "typo",
+                "proximity",
+                "attribute",
+                "sort",
+                "exactness",
+            ],
+            "faceting": {
+                "maxValuesPerFacet": 50,
+            },
+            "pagination": {
+                "maxTotalHits": 500,
+            },
+            "proximityPrecision": "byWord",
+        }

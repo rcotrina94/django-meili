@@ -6,7 +6,14 @@ from django.core import management
 from django.db import models
 from django.test import TestCase, override_settings
 from django.test.utils import isolate_apps
-from posts.models import IndexNamePost, NonStandardIdPost, Post, PostNoGeo, UuidIdPost
+from posts.models import (
+    IndexNamePost,
+    NonStandardIdPost,
+    Post,
+    PostAdditionalIndexSettings,
+    PostNoGeo,
+    UuidIdPost,
+)
 
 from django_meili.models import IndexMixin, MeiliGeo
 from django_meili.querysets import Radius
@@ -297,6 +304,43 @@ class DjangoMeiliUuidTestCase(TestCase):
             .first()
             .title,
             "Hello World",
+        )
+
+
+@override_settings(MEILISEARCH={"SYNC": True}, DEBUG=True)
+class DjangoMeiliIndexSettingsTestCase(TestCase):
+    @classmethod
+    def setUpTestData(cls) -> None:
+        cls.model = PostAdditionalIndexSettings
+        return super().setUpTestData()
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        from django_meili._client import client
+
+        client.client.delete_index(cls.model._meilisearch["index_name"])
+        return super().tearDownClass()
+
+    def test_index_settings_are_applied(self):
+        from django_meili._client import client
+
+        index_name = self.model._meilisearch["index_name"]
+
+        settings = client.client.index(index_name).get_settings()
+
+        self.assertEqual(set(settings["stopWords"]), set(["the", "a"]))
+        self.assertEqual(settings["pagination"]["maxTotalHits"], 500)
+        self.assertEqual(settings["faceting"]["maxValuesPerFacet"], 50)
+        self.assertEqual(settings["proximityPrecision"], "byWord")
+
+        # sanity checks
+        self.assertEqual(
+            settings["searchableAttributes"],
+            ["title", "body"],
+        )
+        self.assertEqual(
+            settings["filterableAttributes"],
+            ["genre"],
         )
 
 

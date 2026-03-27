@@ -12,6 +12,7 @@ from django.db import models
 from meilisearch.models.task import TaskInfo
 
 from ._client import client as _client
+from ._client_settings import MeiliIndexSettings
 from .querysets import IndexQuerySet
 
 # Create your models here.
@@ -29,6 +30,7 @@ class _Meili(TypedDict):
     searchable_fields: Iterable[str] | None
     filterable_fields: Iterable[str] | None
     sortable_fields: Iterable[str] | None
+    index_settings: MeiliIndexSettings | None
     supports_geo: bool
     tasks: list[TaskInfo]
 
@@ -46,6 +48,7 @@ class IndexMixin(models.Model):
     - searchable_fields: The fields to search on.
     - filterable_fields: The fields to filter on.
     - sortable_fields: The fields to sort on.
+    - index_settings: Additional meilisearch index settings.
     - supports_geo: Whether the model supports geolocation.
     - index_name: The name of the index in Meilisearch.
     - primary_key: The primary key for the model.
@@ -83,6 +86,7 @@ class IndexMixin(models.Model):
         searchable_fields: Iterable[str] = None
         filterable_fields: Iterable[str] = None
         sortable_fields: Iterable[str] = None
+        index_settings: MeiliIndexSettings = None
         supports_geo: bool = False
         index_name: str = None
         primary_key: str = "pk"
@@ -95,6 +99,7 @@ class IndexMixin(models.Model):
         searchable_fields = getattr(cls.MeiliMeta, "searchable_fields", None)
         filterable_fields = getattr(cls.MeiliMeta, "filterable_fields", None)
         sortable_fields = getattr(cls.MeiliMeta, "sortable_fields", None)
+        index_settings = getattr(cls.MeiliMeta, "index_settings", None)
         supports_geo = getattr(cls.MeiliMeta, "supports_geo", False)
         include_pk_in_search = getattr(cls.MeiliMeta, "include_pk_in_search", False)
 
@@ -110,6 +115,7 @@ class IndexMixin(models.Model):
                 searchable_fields=searchable_fields,
                 filterable_fields=filterable_fields,
                 sortable_fields=sortable_fields,
+                index_settings=index_settings,
                 supports_geo=supports_geo,
                 include_pk_in_search=include_pk_in_search,
                 tasks=[],
@@ -121,6 +127,7 @@ class IndexMixin(models.Model):
                 searchable_fields,
                 filterable_fields,
                 sortable_fields,
+                index_settings=index_settings,
             )
 
         cls._meilisearch = _Meili(
@@ -131,6 +138,7 @@ class IndexMixin(models.Model):
             filterable_fields=filterable_fields,
             sortable_fields=sortable_fields,
             supports_geo=supports_geo,
+            index_settings=index_settings,
             include_pk_in_search=include_pk_in_search,
             tasks=[task for task in _client.tasks],
         )

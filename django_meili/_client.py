@@ -11,6 +11,8 @@ from meilisearch.client import Client as _Client
 from meilisearch.models.task import Task
 from meilisearch.task import TaskInfo
 
+from ._client_settings import MeiliIndexSettings
+
 from ._settings import _DjangoMeiliSettings
 
 
@@ -44,33 +46,38 @@ class Client:
         searchable_fields: list[str] | None = None,
         filterable_fields: list[str] | None = None,
         sortable_fields: list[str] | None = None,
+        index_settings: MeiliIndexSettings | None = None,
     ):
         """Create a new index with the given settings.
 
         This method creates an index all at once with the desired settings.
 
         Args:
-            index_name (str): The name of the index to create.
+            index_name (str): The name of the index to update.
             primary_key (str): The primary key for the index.
             displayed_fields (list[str] | None): The fields to display in search results.
             searchable_fields (list[str] | None): The fields to search on.
             filterable_fields (list[str] | None): The fields to filter on.
             sortable_fields (list[str] | None): The fields to sort on.
+            index_settings (MeiliIndexSettings): TypedDict for index settings.
 
         Returns:
             Self: The client object.
         """
 
+        settings: MeiliIndexSettings = {
+            "displayedAttributes": displayed_fields or ["*"],
+            "searchableAttributes": searchable_fields or ["*"],
+            "filterableAttributes": filterable_fields or [],
+            "sortableAttributes": sortable_fields or [],
+        }
+
+        if index_settings:
+            settings.update(index_settings)
+
         self.tasks.append(
             self._handle_sync(
-                self.client.index(index_name).update_settings(
-                    {
-                        "displayedAttributes": displayed_fields or ["*"],
-                        "searchableAttributes": searchable_fields or ["*"],
-                        "filterableAttributes": filterable_fields or [],
-                        "sortableAttributes": sortable_fields or [],
-                    }
-                )
+                self.client.index(index_name).update_settings(settings)
             )
         )
         return self
